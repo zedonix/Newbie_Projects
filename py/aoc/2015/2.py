@@ -33,4 +33,5 @@ def second():
         print(total)
 
 
+first()
 second()

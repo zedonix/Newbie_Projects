@@ -24,4 +24,5 @@ def second():
                 print(total)
                 break
 
+first()
 second()
