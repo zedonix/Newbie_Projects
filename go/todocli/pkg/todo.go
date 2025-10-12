@@ -4,20 +4,46 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
 )
 
-const path = "data/data.csv"
+func create() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	dataDir := filepath.Join(configDir, "todocli")
+	err = os.MkdirAll(dataDir, 0o755)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dataDir, "data.csv")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+	if info.Size() == 0 {
+		writer := csv.NewWriter(file)
+		head := []string{"ID", "Discription", "Created on", "Completed"}
+		writer.Write(head)
+		writer.Flush()
+	}
+	return path, nil
+}
 
 func List() {
-	_, err := os.Stat(path)
-	fileExists := err == nil
-	if !fileExists {
-		fmt.Println("No records, Use todo add to add a new todo")
-		return
+	path, err := create()
+	if err != nil {
+		panic(err)
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -40,8 +66,10 @@ func List() {
 }
 
 func Add(record []string) {
-	_, err := os.Stat(path)
-	fileExists := err == nil
+	path, err := create()
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		panic(err)
@@ -51,27 +79,20 @@ func Add(record []string) {
 	writer := csv.NewWriter(file)
 	reader := csv.NewReader(file)
 	defer writer.Flush()
-
 	now := time.Now()
 	id := 1
-	if fileExists {
-		records, err := reader.ReadAll()
+	records, err := reader.ReadAll()
+	if err != nil {
+		panic(err)
+	}
+	idPrev := 0
+	if len(records) != 1 {
+		idPrev, err = strconv.Atoi(records[len(records)-1][0])
 		if err != nil {
 			panic(err)
 		}
-		idPrev := 0
-		if len(records) != 1 {
-			idPrev, err = strconv.Atoi(records[len(records)-1][0])
-			if err != nil {
-				panic(err)
-			}
-		}
-		id = idPrev + 1
-	} else {
-		head := []string{"ID", "Discription", "Created on", "Completed"}
-		writer.Write(head)
 	}
-
+	id = idPrev + 1
 	record = append([]string{strconv.Itoa(id)}, record...)
 	record = append(record, now.Format("2006-01-02 15:04"))
 	record = append(record, "false")
@@ -80,6 +101,10 @@ func Add(record []string) {
 }
 
 func Delete(id []string) {
+	path, err := create()
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -111,6 +136,10 @@ func Delete(id []string) {
 }
 
 func Complete(id []string) {
+	path, err := create()
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
