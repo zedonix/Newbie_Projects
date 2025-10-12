@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	todo "todocli/pkg"
 
 	"github.com/spf13/cobra"
 )
@@ -11,8 +11,9 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adds a todo",
 	Long:  `todocli add - to add todo`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("type some stuff to add")
+		todo.Add(args)
 	},
 }
 
