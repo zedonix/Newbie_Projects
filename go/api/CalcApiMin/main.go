@@ -141,6 +141,3 @@ func main() {
 	handler := cors.Default().Handler(mux)
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }
-
-// history function to show the history
-// change that ques cuz its doing sum,add ,
