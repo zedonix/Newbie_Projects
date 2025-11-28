@@ -74,5 +74,5 @@ func convertAmount(amount float64, base string, to string) (float64, error) {
 	if !ok {
 		return 0, fmt.Errorf("%q in not a currency code", to)
 	}
-	return result * float64(amount), nil
+	return result * amount, nil
 }

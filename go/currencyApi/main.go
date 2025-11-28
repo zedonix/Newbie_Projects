@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 func main() {
@@ -42,34 +44,49 @@ example: currency 10 usd inr
 }
 
 func convertAmount(amount float64, base string, to string) (float64, error) {
-	website := "https://api.fxratesapi.com/latest"
-	resp, err := http.Get(website)
+	if len(base) != 3 || len(to) != 3 {
+		return 0, fmt.Errorf("currency codes should be 3-letter ISO codes")
+	}
+	base = upper(base)
+	to = upper(to)
+
+	url := fmt.Sprintf("https://api.fxratesapi.com/latest?base=%s&currencies=%s", base, to)
+	resp, err := http.Get(url)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("request error: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("unexpected status: %v", resp.StatusCode)
+	if resp.StatusCode == 400 {
+		return 0, fmt.Errorf("one of the currency code is wrong")
+	} else if resp.StatusCode != 200 {
+		return 0, fmt.Errorf("api returned status %d", resp.StatusCode)
 	}
 
-	var raw map[string]json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return 0, fmt.Errorf("json decode error: %v", err)
+	var data struct {
+		Success bool               `json:"success"`
+		Rates   map[string]float64 `json:"rates"`
 	}
 
-	baseFind := raw[base]
-	if baseFind == nil {
-		return 0, fmt.Errorf("%q in not a currency code", base)
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return 0, fmt.Errorf("json decode: %v", err)
 	}
 
-	var rates map[string]float64
-	if err := json.Unmarshal(baseFind, &rates); err != nil {
-		return 0, fmt.Errorf("json unmarshal error: %v", err)
+	if !data.Success {
+		return 0, fmt.Errorf("api returned success=false")
 	}
 
-	result, ok := rates[to]
+	result, ok := data.Rates[to]
 	if !ok {
-		return 0, fmt.Errorf("%q in not a currency code", to)
+		return 0, fmt.Errorf("invalid currency code: %s", to)
 	}
-	return result * float64(amount), nil
+	return result * amount, nil
+}
+
+func upper(s string) string {
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			return s
+		}
+	}
+	return strings.ToUpper(s)
 }
